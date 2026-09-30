@@ -21,7 +21,7 @@ export default async function activate(orca) {
   })
   // Promiseを返し、判定中にOrcaがworkerをidle終了しないようにする。
   orca.events.on('agent.status.changed', (event) => controller.handleEvent(event))
-  orca.commands.register('u-ichi.orca-smart-notify.status', async () => ({
+  orca.commands.register('u-ichi.smart-notify.status', async () => ({
     ...(await settings()), defaultMode: 'observe',
   }))
   const update = async (key, value) => {
@@ -29,12 +29,12 @@ export default async function activate(orca) {
     try { return await orca.host.call('settings.set', { key, value }) }
     finally { controller.cancelPending() }
   }
-  orca.commands.register('u-ichi.orca-smart-notify.observe', () => update('dryRun', true))
-  orca.commands.register('u-ichi.orca-smart-notify.notify', () => update('dryRun', false))
-  orca.commands.register('u-ichi.orca-smart-notify.classify', () => update('classificationEnabled', true))
-  orca.commands.register('u-ichi.orca-smart-notify.no-classify', () => update('classificationEnabled', false))
-  orca.commands.register('u-ichi.orca-smart-notify.attention-only', () => update('notifyKinds', ['needs_user', 'approval', 'failure', 'unclassified']))
-  orca.commands.register('u-ichi.orca-smart-notify.all-stops', () => update('notifyKinds', ['completed', 'needs_user', 'approval', 'failure', 'unclassified']))
+  orca.commands.register('u-ichi.smart-notify.observe', () => update('dryRun', true))
+  orca.commands.register('u-ichi.smart-notify.notify', () => update('dryRun', false))
+  orca.commands.register('u-ichi.smart-notify.classify', () => update('classificationEnabled', true))
+  orca.commands.register('u-ichi.smart-notify.no-classify', () => update('classificationEnabled', false))
+  orca.commands.register('u-ichi.smart-notify.attention-only', () => update('notifyKinds', ['needs_user', 'approval', 'failure', 'unclassified']))
+  orca.commands.register('u-ichi.smart-notify.all-stops', () => update('notifyKinds', ['completed', 'needs_user', 'approval', 'failure', 'unclassified']))
   orca.log('Orca Smart Notify ready: notification and classification are opt-in; no agent hooks installed')
 }
 

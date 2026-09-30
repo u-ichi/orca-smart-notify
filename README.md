@@ -48,7 +48,7 @@ SSH/remote session storage are not verified in this release.
 1. Open **Orca Settings → Plugins → Install plugin** and enter
    `https://github.com/u-ichi/orca-smart-notify#v0.1.0` as the Git source.
 2. Review and enable **Orca Smart Notify**, identifier
-   `u-ichi.orca-smart-notify`.
+   `u-ichi.smart-notify`.
 3. Configure an available classifier below. Run **Orca Smart Notify: Enable
    AI classification of final replies** from Orca's command palette.
 4. Inspect the plugin logs during a normal task. Initial mode is observation:
@@ -80,7 +80,7 @@ Jev reads `~/.config/typesafe/api-key`, a private file with mode `600`, or
 environment variables to plugin workers. No key is included in this repository.
 
 Advanced settings are stored in the plugin's own JSON file on macOS:
-`~/Library/Application Support/orca/plugins-data/u-ichi.orca-smart-notify/settings.json`.
+`~/Library/Application Support/orca/plugins-data/u-ichi.smart-notify/settings.json`.
 Disable the plugin before editing this file, preserve any settings you want to
 keep, and enable it again afterwards. For example, use only your Codex sign-in:
 
@@ -145,7 +145,7 @@ The plugin does not claim exactly-once delivery.
 
 ## Remove
 
-Disable and uninstall `u-ichi.orca-smart-notify` in Orca Settings → Plugins.
+Disable and uninstall `u-ichi.smart-notify` in Orca Settings → Plugins.
 There are no agent-hook registrations or global Gemini definitions to remove.
 Orca may retain this plugin's private settings/storage; remove only its own data
 directory if you also want to erase preferences and notification history.

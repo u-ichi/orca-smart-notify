@@ -1,6 +1,6 @@
 {
   "manifestVersion": 1,
-  "id": "orca-smart-notify",
+  "id": "smart-notify",
   "publisher": "u-ichi",
   "name": "Orca Smart Notify",
   "version": "0.1.0",
@@ -18,31 +18,31 @@
     ],
     "commands": [
       {
-        "id": "u-ichi.orca-smart-notify.status",
+        "id": "u-ichi.smart-notify.status",
         "title": "Orca Smart Notify: Show settings"
       },
       {
-        "id": "u-ichi.orca-smart-notify.observe",
+        "id": "u-ichi.smart-notify.observe",
         "title": "Orca Smart Notify: Observe without notifications"
       },
       {
-        "id": "u-ichi.orca-smart-notify.notify",
+        "id": "u-ichi.smart-notify.notify",
         "title": "Orca Smart Notify: Enable notifications"
       },
       {
-        "id": "u-ichi.orca-smart-notify.classify",
+        "id": "u-ichi.smart-notify.classify",
         "title": "Orca Smart Notify: Enable AI classification of final replies"
       },
       {
-        "id": "u-ichi.orca-smart-notify.no-classify",
+        "id": "u-ichi.smart-notify.no-classify",
         "title": "Orca Smart Notify: Disable AI classification"
       },
       {
-        "id": "u-ichi.orca-smart-notify.attention-only",
+        "id": "u-ichi.smart-notify.attention-only",
         "title": "Orca Smart Notify: Notify only when input is needed"
       },
       {
-        "id": "u-ichi.orca-smart-notify.all-stops",
+        "id": "u-ichi.smart-notify.all-stops",
         "title": "Orca Smart Notify: Include completed work"
       }
     ]
