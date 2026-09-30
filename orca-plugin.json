@@ -1,0 +1,64 @@
+{
+  "manifestVersion": 1,
+  "id": "orca-smart-notify",
+  "publisher": "u-ichi",
+  "name": "Orca Smart Notify",
+  "version": "0.1.0",
+  "description": "Notify when work is complete or needs your input. Suppress background waits, worker activity and duplicate stops. No extra agent hooks.",
+  "engines": {
+    "orca": ">=1.4.216"
+  },
+  "pluginApi": 1,
+  "main": "main.mjs",
+  "contributes": {
+    "events": [
+      {
+        "on": "agent.status.changed"
+      }
+    ],
+    "commands": [
+      {
+        "id": "u-ichi.orca-smart-notify.status",
+        "title": "Orca Smart Notify: Show settings"
+      },
+      {
+        "id": "u-ichi.orca-smart-notify.observe",
+        "title": "Orca Smart Notify: Observe without notifications"
+      },
+      {
+        "id": "u-ichi.orca-smart-notify.notify",
+        "title": "Orca Smart Notify: Enable notifications"
+      },
+      {
+        "id": "u-ichi.orca-smart-notify.classify",
+        "title": "Orca Smart Notify: Enable AI classification of final replies"
+      },
+      {
+        "id": "u-ichi.orca-smart-notify.no-classify",
+        "title": "Orca Smart Notify: Disable AI classification"
+      },
+      {
+        "id": "u-ichi.orca-smart-notify.attention-only",
+        "title": "Orca Smart Notify: Notify only when input is needed"
+      },
+      {
+        "id": "u-ichi.orca-smart-notify.all-stops",
+        "title": "Orca Smart Notify: Include completed work"
+      }
+    ]
+  },
+  "capabilities": [
+    {
+      "kind": "notifications:show"
+    },
+    {
+      "kind": "events:subscribe"
+    },
+    {
+      "kind": "storage"
+    },
+    {
+      "kind": "settings:own"
+    }
+  ]
+}
