@@ -8,7 +8,7 @@ export async function classify(row, signal, settings = {}) {
   if (settings.classificationEnabled !== true) return { classifier: 'disabled', state: null }
   if (signal?.aborted) return { classifier: 'cancelled', state: null }
   return new Promise((resolve, reject) => {
-    const child = execFile(settings.pythonCommand ?? 'python3', [helper], {
+    const child = execFile(settings.pythonCommand ?? 'python3', ['-B', helper], {
       timeout: 55000, maxBuffer: 128 * 1024, signal,
     }, (error, stdout) => {
       if (error) return reject(new Error('Classification helper failed'))
