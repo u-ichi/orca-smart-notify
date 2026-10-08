@@ -100,6 +100,7 @@ keep, and enable it again afterwards. For example, use only your Codex sign-in:
 | `classifierBackends` | Any nonempty selection of `jev`, `gemini`, `codex`; Jev, if included, must be first |
 | `notifyKinds` | Selected notification types from the example above; omit for all, or use `[]` for none |
 | `worktreeIds` | Optional exact worktree IDs to observe; omitted means all. Get IDs with `orca worktree list --json` |
+| `worktreeRules` | Optional per-worktree notification types selected by display-name prefix; see below |
 | `quietMs` | Quiet period, default `5000` milliseconds |
 | `jevModel`, `geminiModel`, `codexModel` | Override the corresponding classifier model |
 | `typesafeKeyFile` | Alternate private key file; `~` is expanded |
@@ -109,6 +110,51 @@ keep, and enable it again afterwards. For example, use only your Codex sign-in:
 `worktreeIds` can limit a comparison trial. Remove it to cover all worktrees.
 Orca's `worktree ps` command returns rows for all worktrees; this plugin only
 classifies and notifies matching worktrees and does not persist those row bodies.
+
+### Per-worktree notification types
+
+Sessions started by another system (for example a task dispatcher that creates
+the worktree and sends the prompts itself) stop at every turn, but that stop is
+addressed to the dispatcher, not to you. `worktreeRules` keeps your own sessions
+unchanged and limits such worktrees to the types you list:
+
+```json
+{
+  "worktreeRules": [
+    { "displayNamePrefixes": ["Dots: "], "notifyKinds": ["approval"] }
+  ]
+}
+```
+
+- A rule applies when the Orca worktree display name starts with one of the
+  listed prefixes. The match is exact and case-sensitive: with the example above,
+  `Dots: review PR 42` matches, while `Dots session notes` or `dots: old` do not.
+  Add further prefixes only for worktrees that already exist under an older name.
+- The first matching rule replaces `notifyKinds` for that worktree. Worktrees
+  without a match use the top-level `notifyKinds` as before.
+- A rule without both `displayNamePrefixes` and `notifyKinds` arrays is ignored.
+- `approval` is produced from Orca's status alone: state `waiting` with a tool
+  name that is not a question tool. The plugin cannot tell from that input
+  whether a hook had already allowed the command. The distinction comes from the
+  agent side: Claude only runs its PermissionRequest/Notification hooks, which
+  Orca's hook script forwards, when a permission prompt is actually open, and a
+  command allowed by a PreToolUse hook never opens one, so Orca keeps reporting
+  `working`. This is read from the current hook scripts and verified in this
+  repository with synthetic status fixtures; it has not been confirmed against a
+  live permission prompt and notification delivery.
+- When none of the classification-only types (`completed`, `needs_user`,
+  `unclassified`) are selected for a worktree, the final reply is not sent to
+  any classifier. The decision is still logged with classifier `skipped-kinds`.
+
+This setting only filters the notifications this plugin shows to you. It does not
+change, acknowledge or consume Orca's `agent.status.changed` events, the agent
+status files, the orchestration task/run/dispatch records or any worker
+completion evidence, so a dispatcher that reads completion or failure from Orca
+keeps receiving them. The plugin does not implement a dispatcher's reconciliation
+or state machine, and one of its notifications is not an authorization for a
+dispatcher's next step. Whether that dispatcher reports a failure back to you is
+its own responsibility; suppressing `failure` here is only appropriate once that
+reporting path is connected and confirmed.
 
 ## Data handling and compatibility
 
