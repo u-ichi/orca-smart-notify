@@ -5,10 +5,29 @@ const LABELS = { completed: '完了', needs_user: '判断待ち', approval: '承
   failure: 'エラーで停止', unclassified: '停止（判定不能）' }
 const STATES = new Set(['working', 'waiting', 'blocked', 'done'])
 const QUESTION = /^(AskUserQuestion|ask_user_question|request_user_input)$/
+// 本文分類でしか決まらない種類。どれも通知対象でなければ外部分類を省く。
+const CLASSIFIED_KINDS = ['completed', 'needs_user', 'unclassified']
 
 function includesWorktree(settings, event) {
   return settings.worktreeIds === undefined ||
     (Array.isArray(settings.worktreeIds) && settings.worktreeIds.includes(event.worktreeId))
+}
+
+// worktreeの表示名が前置きに一致した最初の規則。前置きと通知種類の両方が配列の規則だけを使う。
+function worktreeRule(settings, worktree) {
+  const name = worktree?.displayName
+  if (!Array.isArray(settings.worktreeRules) || typeof name !== 'string') return null
+  return settings.worktreeRules.find((rule) => rule && typeof rule === 'object' &&
+    Array.isArray(rule.displayNamePrefixes) && Array.isArray(rule.notifyKinds) &&
+    rule.displayNamePrefixes.some((prefix) => typeof prefix === 'string' && prefix.length > 0 && name.startsWith(prefix))) ?? null
+}
+
+// 本人へ送る通知種類。規則に一致すればその種類、なければ既定のnotifyKindsを使う。
+function allowedKinds(settings, worktree) {
+  const rule = worktreeRule(settings, worktree)
+  const kinds = rule ? rule.notifyKinds : settings.notifyKinds
+  return { scope: rule ? 'worktree-rule' : 'default',
+    selected: (kind) => kinds === undefined || (Array.isArray(kinds) && kinds.includes(kind)) }
 }
 
 function failure(row) {
@@ -76,9 +95,12 @@ export function createController(deps) {
       let kind = directKind(row)
       let classification = {}
       if (!kind) {
-        if (row.lastAssistantMessage?.trim()) {
-          settings = await deps.getSettings()
-          if (!includesWorktree(settings, event)) return { notify: false, reason: 'outside-worktree-scope' }
+        settings = await deps.getSettings()
+        if (!includesWorktree(settings, event)) return { notify: false, reason: 'outside-worktree-scope' }
+        if (!CLASSIFIED_KINDS.some(allowedKinds(settings, before.worktree).selected)) {
+          // 分類結果がどれも通知対象にならないworktreeでは、本文を外部へ送らない。
+          classification = { classifier: 'skipped-kinds', state: null }
+        } else if (row.lastAssistantMessage?.trim()) {
           try { classification = await deps.classify(row, signal, settings) }
           catch { classification = { classifier: 'failed', state: null } }
         } else {
@@ -96,9 +118,9 @@ export function createController(deps) {
       if (!includesWorktree(settings, event)) return { notify: false, reason: 'outside-worktree-scope' }
       dryRun = settings.dryRun !== false
       if (signal.aborted) return { notify: false, reason: 'resumed' }
-      const selected = settings.notifyKinds === undefined ||
-        (Array.isArray(settings.notifyKinds) && settings.notifyKinds.includes(kind))
-      const result = { notify: kind !== 'waiting' && selected, kind, dryRun,
+      const allowed = allowedKinds(settings, after.worktree)
+      const selected = allowed.selected(kind)
+      const result = { notify: kind !== 'waiting' && selected, kind, dryRun, notifyScope: allowed.scope,
         classifier: classification.classifier ?? 'status',
         messageLength: classification.messageLength ?? row.lastAssistantMessage?.length ?? 0,
         messageSource: classification.messageSource ?? 'status',
