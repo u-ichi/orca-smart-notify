@@ -277,6 +277,49 @@ test('worktree規則で抑止した停止も同じ停止として重複判定し
   assert.equal(s.sent.length, 0)
 })
 
+test('設定で明示した旧前置きdot: も一致し、列挙しない表記は一致しない', async () => {
+  const settings = { ...ruleSettings, worktreeRules: [{ displayNamePrefixes: ['Dots: ', 'dot: '], notifyKinds: ['approval'] }] }
+  for (const [displayName, scope] of [['dot: main同期実装', 'worktree-rule'], ['Dot: other', 'default'], ['dot-runtime-recovery', 'default']]) {
+    const s = setup({ getSettings: async () => settings, readSnapshot: async () => ruled(displayName) })
+    const result = await s.controller.handleEvent(event)
+    assert.equal(result.notifyScope, scope, displayName)
+    assert.equal(result.notify, scope === 'default', displayName)
+  }
+})
+
+test('承認待ちと失敗を選んだ規則では失敗通知を保持し、完了は送らない', async () => {
+  const settings = { ...ruleSettings, worktreeRules: [{ displayNamePrefixes: ['Dots: '], notifyKinds: ['approval', 'failure'] }] }
+  const failed = setup({ getSettings: async () => settings,
+    readSnapshot: async () => ruled('Dots: lifecycle design', { mainAgent: { state: 'done', outcome: 'failure', stateStartedAt: 90 } }),
+    classify: async () => assert.fail('失敗を外部分類した') })
+  const failure = await failed.controller.handleEvent(event)
+  assert.equal(failure.kind, 'failure')
+  assert.equal(failure.notify, true)
+  assert.equal(failed.sent.length, 1)
+  assert.match(failed.sent[0].title, /エラーで停止/)
+  const completed = setup({ getSettings: async () => settings, readSnapshot: async () => ruled('Dots: lifecycle design'),
+    classify: async () => assert.fail('通知しない完了を外部分類した') })
+  assert.equal((await completed.controller.handleEvent(event)).reason, 'disabled-kind')
+  assert.equal(completed.sent.length, 0)
+})
+
+test('規則の通知種類は既定のnotifyKindsへの追加ではなく置換になる', async () => {
+  // 既定はcompleted、規則はapprovalだけ。規則が追加なら完了も通知され、置換なら通知されない。
+  const settings = { dryRun: false, quietMs: 0, classificationEnabled: true, notifyKinds: ['completed'],
+    worktreeRules: [{ displayNamePrefixes: ['Dots: '], notifyKinds: ['approval'] }] }
+  const plain = setup({ getSettings: async () => settings, readSnapshot: async () => ruled('Example') })
+  assert.equal((await plain.controller.handleEvent(event)).notify, true)
+  const ruledOnly = setup({ getSettings: async () => settings, readSnapshot: async () => ruled('Dots: lifecycle design'),
+    classify: async () => assert.fail('置換後に通知対象外の本文を外部分類した') })
+  const result = await ruledOnly.controller.handleEvent(event)
+  assert.equal(result.reason, 'disabled-kind')
+  assert.equal(ruledOnly.sent.length, 0)
+  // 既定に無いapprovalが規則では通知される。
+  const approval = setup({ getSettings: async () => settings,
+    readSnapshot: async () => ruled('Dots: lifecycle design', { state: 'waiting', toolName: 'Bash', toolInput: 'make' }) })
+  assert.equal((await approval.controller.handleEvent({ ...event, state: 'waiting' })).notify, true)
+})
+
 test('前置きか通知種類が配列でない規則は無視し、既定の通知種類を使う', async () => {
   const s = setup({ getSettings: async () => ({ dryRun: false, quietMs: 0, notifyKinds: ['completed'],
     worktreeRules: [{ displayNamePrefixes: 'Dots: ', notifyKinds: ['approval'] }, { displayNamePrefixes: ['Dots: '] }, null] }),

@@ -121,18 +121,29 @@ unchanged and limits such worktrees to the types you list:
 ```json
 {
   "worktreeRules": [
-    { "displayNamePrefixes": ["Dots: "], "notifyKinds": ["approval"] }
+    { "displayNamePrefixes": ["Dots: "], "notifyKinds": ["approval", "failure"] }
   ]
 }
 ```
 
+Start with `["approval", "failure"]` as above. Narrow it to `["approval"]` only
+after the dispatcher's own failure reporting back to you is connected and
+confirmed; until then a suppressed `failure` would reach nobody.
+
 - A rule applies when the Orca worktree display name starts with one of the
   listed prefixes. The match is exact and case-sensitive: with the example above,
   `Dots: review PR 42` matches, while `Dots session notes` or `dots: old` do not.
-  Add further prefixes only for worktrees that already exist under an older name.
-- The first matching rule replaces `notifyKinds` for that worktree. Worktrees
-  without a match use the top-level `notifyKinds` as before.
+  `Dots: ` is the current prefix. Worktrees that already exist under the older
+  `dot: ` name are covered only by listing that prefix explicitly, for example
+  `["Dots: ", "dot: "]`; do not use `dot: ` for new worktrees.
+- The first matching rule replaces `notifyKinds` for that worktree; it is not
+  merged with the top-level list. Worktrees without a match use the top-level
+  `notifyKinds` as before.
 - A rule without both `displayNamePrefixes` and `notifyKinds` arrays is ignored.
+- Before applying a rule, run `orca worktree list --json` and check that none of
+  the worktrees you started yourself carries a listed prefix. A worktree you
+  named `Dots: …` by hand would lose its completion alerts; rename it with
+  `orca worktree set --worktree <selector> --display-name <name>` first.
 - `approval` is produced from Orca's status alone: state `waiting` with a tool
   name that is not a question tool. The plugin cannot tell from that input
   whether a hook had already allowed the command. The distinction comes from the
@@ -155,6 +166,55 @@ or state machine, and one of its notifications is not an authorization for a
 dispatcher's next step. Whether that dispatcher reports a failure back to you is
 its own responsibility; suppressing `failure` here is only appropriate once that
 reporting path is connected and confirmed.
+
+#### Live check before relying on a rule
+
+The repository tests use synthetic status fixtures. The following check confirms
+the three behaviors on a real Orca with the candidate build, without touching
+your normal notification setup until the last step. Do it on a quiet Orca where
+no other session of yours is running.
+
+1. **Build under test.** Compare the installed plugin with the candidate commit:
+   `plugins.lock.json` under Orca's data directory records `resolvedCommit` and
+   `contentHash`; `diff -r` the installed `plugins/u-ichi.smart-notify` directory
+   against the candidate checkout, excluding `.git`. Reinstalling the candidate is
+   a separate, user-run step; do not test the old build against the new README.
+2. **Settings for the trial.** Disable the plugin, then set `dryRun: true`,
+   `classificationEnabled: false`, `worktreeIds` to the two trial worktrees from
+   step 3, and the `worktreeRules` example above. Keep a copy of the previous
+   `settings.json` to restore. Enable the plugin again.
+3. **Two trial worktrees.** Create one worktree named `Dots: notify trial` and one
+   named `notify trial` (no prefix) with `orca worktree create --name …`, in a
+   throwaway repo or branch, and start Claude in each. Nothing in them should
+   matter if it is lost.
+4. **Permission prompt actually open.** In the `Dots: ` worktree, ask Claude to
+   run a command that your permission settings neither allow nor deny, so the
+   prompt opens and stays open (an otherwise harmless command whose name is not in
+   `permissions.allow`, such as an unlisted read-only tool, is enough; do not use a
+   destructive command). Expected in the plugin log after the quiet period:
+   `kind: approval`, `notify: true`, `notifyScope: worktree-rule`, `dryRun: true`.
+   Then answer the prompt with "no"; expected: no further record for that stop or
+   `reason: resumed`.
+5. **Command allowed by a hook.** In the same worktree, ask Claude to run a
+   command that your PreToolUse hook allows without a prompt (for this setup, a
+   command matched by `permissions.allow` or classified low by
+   `approval-risk-analysis.sh`; its decision log under `~/.claude/logs/` shows
+   `decision: allow`). Expected: no `waiting` event reaches the plugin; the log
+   shows only `reason: working` records, and no `kind: approval`. Let the turn
+   finish; expected: `kind: unclassified`, `reason: disabled-kind`,
+   `classifier: skipped-kinds`, no delivery.
+6. **Your own worktree unchanged.** In the `notify trial` worktree, let a turn
+   finish. Expected: `notifyScope: default`, the usual `completed` or
+   `unclassified` decision, `notify: true`, and no `skipped-kinds`.
+7. **Delivery path.** Only if steps 4 to 6 match, set `dryRun: false` with the
+   same `worktreeIds` and repeat step 4 and step 6 once; the audit log under
+   `plugins-data/audit.log` records `notifications.show` and the device shows the
+   alert. The dispatcher side is checked separately: its own record of the trial
+   dispatch must still show the completion and the permission wait after the
+   plugin suppressed or sent its alerts.
+8. **Restore.** Disable the plugin, restore the saved `settings.json` (remove
+   `worktreeIds`, keep or add `worktreeRules` as decided), enable the plugin,
+   and remove the two trial worktrees with `orca worktree rm`.
 
 ## Data handling and compatibility
 
